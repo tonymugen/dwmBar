@@ -16,19 +16,22 @@
  * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-/// A bar for dwm
+
+/// C++ modules for the status bar (implementation)
 /** \file
  * \author Anthony J. Greenberg
  * \copyright Copyright (c) 2020 Anthony J. Greenberg
  * \version 0.9
  *
- * Displays information on the bar for the Dynamic Window Manager (dwm). External scripts and some internal functions are supported.
- * Can use two bars (bottom and top) if dwm is patched with `dwm-extrabar`.
+ *  Implementation of classes that provide output useful for display in the status bar.
  *
  */
-#include <X11/Xlib.h>
-#include <iostream>
+#include <cstddef>
+#include <functional>
 #include <string>
+#include <sstream>
+#include <ctime>
+#include <iomanip>
 #include <thread>
 #include <mutex>
 #include <condition_variable>
@@ -37,50 +40,37 @@
 #include "modules.hpp"
 
 using std::string;
-using std::thread;
+using std::stringstream;
+using std::time;
+using std::put_time;
+using std::localtime;
 using std::this_thread::sleep_for;
 using std::mutex;
 using std::unique_lock;
-using std::condition_variable;
 using std::chrono::seconds;
 
 using namespace DWMBspace;
 
-/** \brief Render the bar
- *
- * Renders the bar text by printing the provided string to the root window.
- * This is how dwm handles status bars.
- *
- * \param[in] barOutput text to be displayed
- */
-void printRoot(const string &barOutput){
-	Display *d = XOpenDisplay(NULL);
-	if (d == nullptr) {
-		std::cerr << "dmwbar ERROR: cannot open display\n";
-		exit(1);
+void ModuleDate::operator()() const {
+	if (refreshInterval_) { // if not zero, do a loop
+		while (1) {
+			time_t t  = time(nullptr);
+			stringstream outTime;
+			outTime << put_time( localtime(&t), dateFormat_.c_str() );
+			mutex mtx;
+			unique_lock<mutex> lk(mtx);
+			*outString_ = outTime.str();
+			outputCondition_->notify_one();
+			lk.unlock();
+			outTime.clear();
+			sleep_for( seconds(refreshInterval_) );
+		}
+	} else { // for now, if the interval is 0, do only once. TODO: wait for signal
+		time_t t  = time(nullptr);
+		stringstream outTime;
+		outTime << put_time( localtime(&t), dateFormat_.c_str() );
+		*outString_ = outTime.str();
+		outTime.clear();
 	}
-	const int32_t screen = DefaultScreen(d);
-	const Window root    = RootWindow(d, screen);
-	XStoreName( d, root, barOutput.c_str() );
-	XCloseDisplay(d);
-}
-
-int main(){
-	//const string dateFormat("%a %b %e %R %Z");
-	const string dateFormat("%a %b %e %H:%M:%S %Z");
-	string bar;
-	string oldBar;
-	mutex mtx;
-	condition_variable dateCond;
-	thread tstThr{ModuleDate(5, 12, dateFormat, &bar, &dateCond)};
-	while (true) {
-		unique_lock<mutex> lk(mtx);
-		dateCond.wait(lk, [&]{return oldBar != bar;});
-		oldBar = bar;
-		lk.unlock();
-		std::cout << oldBar << "\n";
-	}
-	tstThr.join();
-	exit(0);
 }
 
