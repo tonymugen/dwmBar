@@ -53,7 +53,7 @@ using namespace DWMBspace;
 
 void ModuleDate::operator()() const {
 	if (refreshInterval_) { // if not zero, do a loop
-		while (1) {
+		while (true) {
 			time_t t  = time(nullptr);
 			stringstream outTime;
 			outTime << put_time( localtime(&t), dateFormat_.c_str() );

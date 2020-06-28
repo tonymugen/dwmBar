@@ -27,6 +27,7 @@
  *
  */
 #include <X11/Xlib.h>
+#include <csignal>
 #include <iostream>
 #include <string>
 #include <thread>
@@ -65,8 +66,14 @@ void printRoot(const string &barOutput){
 	XCloseDisplay(d);
 }
 
+void processSignal(int sig){
+	std::cout << "got signal " << sig << "\n";
+	exit(sig);	
+}
 int main(){
 	//const string dateFormat("%a %b %e %R %Z");
+	const int sigID = SIGRTMIN+1;
+	signal(sigID, processSignal);
 	const string dateFormat("%a %b %e %H:%M:%S %Z");
 	string bar;
 	string oldBar;
@@ -75,8 +82,11 @@ int main(){
 	thread tstThr{ModuleDate(5, 12, dateFormat, &bar, &dateCond)};
 	while (true) {
 		unique_lock<mutex> lk(mtx);
-		dateCond.wait(lk, [&]{return oldBar != bar;});
-		oldBar = bar;
+		//dateCond.wait(lk, [&]{return oldBar != bar;});
+		dateCond.wait(lk);
+		if (oldBar != bar) {
+			oldBar = bar;
+		}
 		lk.unlock();
 		std::cout << oldBar << "\n";
 	}
