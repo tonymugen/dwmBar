@@ -66,11 +66,18 @@ void ModuleDate::operator()() const {
 			sleep_for( seconds(refreshInterval_) );
 		}
 	} else { // for now, if the interval is 0, do only once. TODO: wait for signal
-		time_t t  = time(nullptr);
-		stringstream outTime;
-		outTime << put_time( localtime(&t), dateFormat_.c_str() );
-		*outString_ = outTime.str();
-		outTime.clear();
+		mutex mtx;
+		while (true) {
+			unique_lock<mutex> lk(mtx);
+			signalCondition_->wait(lk);
+			time_t t  = time(nullptr);
+			stringstream outTime;
+			outTime << put_time( localtime(&t), dateFormat_.c_str() );
+			*outString_ = outTime.str();
+			outTime.clear();
+			outputCondition_->notify_one();
+			lk.unlock();
+		}
 	}
 }
 

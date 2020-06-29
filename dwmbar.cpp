@@ -47,6 +47,8 @@ using std::chrono::seconds;
 
 using namespace DWMBspace;
 
+static condition_variable signalCondition;
+
 /** \brief Render the bar
  *
  * Renders the bar text by printing the provided string to the root window.
@@ -67,8 +69,9 @@ void printRoot(const string &barOutput){
 }
 
 void processSignal(int sig){
-	std::cout << "got signal " << sig << "\n";
-	exit(sig);	
+	if (sig == 35) {
+		signalCondition.notify_one();
+	}
 }
 int main(){
 	//const string dateFormat("%a %b %e %R %Z");
@@ -79,10 +82,9 @@ int main(){
 	string oldBar;
 	mutex mtx;
 	condition_variable dateCond;
-	thread tstThr{ModuleDate(5, 12, dateFormat, &bar, &dateCond)};
+	thread tstThr{ModuleDate(0, dateFormat, &bar, &dateCond, &signalCondition)};
 	while (true) {
 		unique_lock<mutex> lk(mtx);
-		//dateCond.wait(lk, [&]{return oldBar != bar;});
 		dateCond.wait(lk);
 		if (oldBar != bar) {
 			oldBar = bar;
