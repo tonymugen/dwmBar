@@ -55,6 +55,22 @@ static const int sigRTNUM = 30;
 /** \brief Condition variables that will respond to real-time signals */
 static vector<condition_variable> signalCondition(sigRTNUM);
 
+/** \brief Make bar output
+ *
+ * Takes individual module outputs and puts them together for printing.
+ *
+ * \param[in] moduleOutput vector of individual module outputs
+ * \param[in] delimiter delimiter character(s) between modules
+ * \param[out] barText compiled text to be printed to the bar
+ */
+void makeBarOutput(const vector<string> &moduleOutput, const string &delimiter, string &barText){
+	barText.clear();
+	for (auto moIt = moduleOutput.begin(); moIt != (moduleOutput.end() - 1); ++moIt){
+		barText += (*moIt) + delimiter;
+	}
+	barText += moduleOutput.back();
+}
+
 /** \brief Render the bar
  *
  * Renders the bar text by printing the provided string to the root window.
@@ -65,8 +81,7 @@ static vector<condition_variable> signalCondition(sigRTNUM);
 void printRoot(const string &barOutput){
 	Display *d = XOpenDisplay(NULL);
 	if (d == nullptr) {
-		std::cerr << "dmwbar ERROR: cannot open display\n";
-		exit(1);
+		return;         // fail silently
 	}
 	const int32_t screen = DefaultScreen(d);
 	const Window root    = RootWindow(d, screen);
@@ -89,27 +104,31 @@ void processSignal(int sig){
 }
 
 int main(){
-	//const string dateFormat("%a %b %e %R %Z");
-	for (int sigID = SIGRTMIN; sigID < SIGRTMAX; sigID++) {
+	for (int sigID = SIGRTMIN; sigID <= SIGRTMAX; sigID++) {
 		signal(sigID, processSignal);
 	}
-	const string dateFormat("%a %b %e %H:%M:%S %Z");
-	string bar;
-	string oldBar;
+	//const string dateFormat("%a %b %e %R %Z");
+	const string dateFormat("%a %b %e %H:%M %Z");
+	vector<string> moduleOutputs(2);
+	const string delim(" | ");
+	string barText;
 	mutex mtx;
-	condition_variable dateCond;
-	//thread tstThr{ModuleDate(5, dateFormat, &bar, &dateCond, &signalCondition[0])};
-	thread tstThr{ModuleBattery(5, &bar, &dateCond, &signalCondition[1])};
+	condition_variable commonCond; // this triggers printing to the bar from individual modules
+	vector<thread> moduleThreads;
+	moduleThreads.push_back(thread{ModuleDate(60, dateFormat, &moduleOutputs[0], &commonCond, &signalCondition[1])});
+	moduleThreads.push_back(thread{ModuleBattery(5, &moduleOutputs[1], &commonCond, &signalCondition[2])});
 	while (true) {
 		unique_lock<mutex> lk(mtx);
-		dateCond.wait(lk);
-		if (oldBar != bar) {
-			oldBar = bar;
-		}
+		commonCond.wait(lk);
+		makeBarOutput(moduleOutputs, delim, barText);
 		lk.unlock();
-		std::cout << oldBar << " \n";
+		std::cout << barText << " \n";
 	}
-	tstThr.join();
+	for (auto &t : moduleThreads){
+		if ( t.joinable() ) {
+			t.join();
+		}
+	}
 	exit(0);
 }
 

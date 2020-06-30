@@ -133,7 +133,8 @@ namespace DWMBspace {
 		 */
 		void operator()() const override;
 	protected:
-
+		/** \brief Get battery status and format output */
+		void formatStatus_() const;
 	};
 }
 
