@@ -28,8 +28,10 @@
  */
 #include <X11/Xlib.h>
 #include <csignal>
+#include <cstddef>
 #include <iostream>
 #include <string>
+#include <vector>
 #include <thread>
 #include <mutex>
 #include <condition_variable>
@@ -38,6 +40,7 @@
 #include "modules.hpp"
 
 using std::string;
+using std::vector;
 using std::thread;
 using std::this_thread::sleep_for;
 using std::mutex;
@@ -47,7 +50,10 @@ using std::chrono::seconds;
 
 using namespace DWMBspace;
 
-static condition_variable signalCondition;
+/** \brief Number of possible real-time signals */
+static const int sigRTNUM = 30;
+/** \brief Condition variables that will respond to real-time signals */
+static vector<condition_variable> signalCondition(sigRTNUM);
 
 /** \brief Render the bar
  *
@@ -68,21 +74,32 @@ void printRoot(const string &barOutput){
 	XCloseDisplay(d);
 }
 
+/** \brief Process real-time signals
+ *
+ * Receive and process real-time signals to trigger relevant modules.
+ *
+ * \param[in] sig signal number (starting at `SIGRTMIN`)
+ */
 void processSignal(int sig){
-	if (sig == 35) {
-		signalCondition.notify_one();
+	if ( (sig < SIGRTMIN) || (sig > SIGRTMAX) ) { // do nothing silently if wrong signal received
+		return;
 	}
+	size_t sigInd = sig - SIGRTMIN;
+	signalCondition[sigInd].notify_one();
 }
+
 int main(){
 	//const string dateFormat("%a %b %e %R %Z");
-	const int sigID = SIGRTMIN+1;
-	signal(sigID, processSignal);
+	for (int sigID = SIGRTMIN; sigID < SIGRTMAX; sigID++) {
+		signal(sigID, processSignal);
+	}
 	const string dateFormat("%a %b %e %H:%M:%S %Z");
 	string bar;
 	string oldBar;
 	mutex mtx;
 	condition_variable dateCond;
-	thread tstThr{ModuleDate(0, dateFormat, &bar, &dateCond, &signalCondition)};
+	//thread tstThr{ModuleDate(5, dateFormat, &bar, &dateCond, &signalCondition[0])};
+	thread tstThr{ModuleBattery(5, &bar, &dateCond, &signalCondition[1])};
 	while (true) {
 		unique_lock<mutex> lk(mtx);
 		dateCond.wait(lk);
@@ -90,7 +107,7 @@ int main(){
 			oldBar = bar;
 		}
 		lk.unlock();
-		std::cout << oldBar << "\n";
+		std::cout << oldBar << " \n";
 	}
 	tstThr.join();
 	exit(0);

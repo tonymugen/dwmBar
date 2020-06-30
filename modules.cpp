@@ -160,6 +160,7 @@ void ModuleBattery::operator()() const {
 			}
 			outputCondition_->notify_one();
 			lk.unlock();
+			sleep_for( seconds(refreshInterval_) );
 		}
 	}
 }
