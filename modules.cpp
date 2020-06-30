@@ -27,9 +27,11 @@
  *
  */
 #include <cstddef>
+#include <cstdio>
 #include <functional>
 #include <string>
 #include <sstream>
+#include <fstream>
 #include <ctime>
 #include <iomanip>
 #include <thread>
@@ -40,7 +42,10 @@
 #include "modules.hpp"
 
 using std::string;
+using std::stod;
 using std::stringstream;
+using std::fstream;
+using std::ios;
 using std::time;
 using std::put_time;
 using std::localtime;
@@ -81,3 +86,80 @@ void ModuleDate::operator()() const {
 	}
 }
 
+void ModuleBattery::operator()() const {
+	if (refreshInterval_) { // if not zero, do a loop
+		while (true) {
+			fstream statusStream;
+			statusStream.open("/sys/class/power_supply/BAT0/status", ios::in);
+			if ( !statusStream.is_open() ) { // fail silently
+				continue;
+			}
+			string batStatus;
+			getline(statusStream, batStatus);
+			statusStream.close();
+			fstream capacityStream;
+			capacityStream.open("/sys/class/power_supply/BAT0/capacity", ios::in);
+			if ( !capacityStream.is_open() ) {
+				continue;
+			}
+			string batCapacityStr;
+			getline(capacityStream, batCapacityStr);
+			capacityStream.close();
+			double batCapacity = stod(batCapacityStr);
+			mutex mtx;
+			unique_lock<mutex> lk(mtx);
+			if (batStatus == "Charging") {
+				if (batCapacity < 5.0) {
+					*outString_ = batCapacityStr + " \uf58d";
+				} else if (batCapacity < 20.0) {
+					*outString_ =  batCapacityStr + " \uf585";
+				} else if (batCapacity < 30.0) {
+					*outString_ =  batCapacityStr + " \uf586";
+				} else if (batCapacity < 40.0) {
+					*outString_ =  batCapacityStr + " \uf587";
+				} else if (batCapacity < 60.0) {
+					*outString_ =  batCapacityStr + " \uf588";
+				} else if (batCapacity < 80.0) {
+					*outString_ =  batCapacityStr + " \uf589";
+				} else if (batCapacity < 90.0) {
+					*outString_ =  batCapacityStr + " \uf58a";
+				} else if (batCapacity < 100.0){
+					*outString_ =  batCapacityStr + " \uf578";
+				}
+			} else {
+				if (batCapacity < 5.0) {
+					*outString_ =  batCapacityStr + " \uf58d";
+				} else if (batCapacity < 10.0) {
+					*outString_ =  batCapacityStr + " \uf579";
+				} else if (batCapacity < 20.0) {
+					*outString_ =  batCapacityStr + " \uf57a";
+				} else if (batCapacity < 30.0) {
+					*outString_ =  batCapacityStr + " \uf57b";
+				} else if (batCapacity < 40.0) {
+					*outString_ =  batCapacityStr + " \uf57c";
+				} else if (batCapacity < 50.0) {
+					*outString_ =  batCapacityStr + " \uf57d";
+				} else if (batCapacity < 60.0) {
+					*outString_ =  batCapacityStr + " \uf57e";
+				} else if (batCapacity < 70.0) {
+					*outString_ =  batCapacityStr + " \uf57f";
+				} else if (batCapacity < 80.0) {
+					*outString_ =  batCapacityStr + " \uf580";
+				} else if (batCapacity < 90.0) {
+					*outString_ =  batCapacityStr + " \uf581";
+				} else if (batCapacity < 100.0){
+					*outString_ =  batCapacityStr + " \uf578";
+				} else {
+					if (batStatus == "Discharging") {
+						*outString_ =  batCapacityStr + " \uf578";
+					} else {
+						*outString_ =  batCapacityStr + " \uf583";
+					}
+				}
+
+			}
+			outputCondition_->notify_one();
+			lk.unlock();
+		}
+	}
+}

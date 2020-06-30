@@ -46,69 +46,68 @@ namespace DWMBspace {
 	 *
 	 */
 	class Module {
-		public:
-			/** Destructor */
-			virtual ~Module(){ outString_ = nullptr; outputCondition_ = nullptr; };
-			/** Run the module
-			 *
-			 * Runs the module, refreshing at the specified interval or after receiving a refresh signal.
-			 */
-			virtual void operator()() const = 0;
-		protected:
-			/** Default constructor */
-			Module() : refreshInterval_{0}, outString_{nullptr}, outputCondition_{nullptr}, signalCondition_{nullptr} {};
-			/** Constructor
-			 *
-			 * \param[in] interval refresh time interval in seconds
-			 * \param[in,out] output pointer to the output storing string
-			 * \param[in,out] cVar pointer to the condition variable for change signaling
-			 * \param[in,out] sigVar pointer to the condition variable to monitor real-time signals
-			 */
-			Module(const uint32_t &interval, string *output, condition_variable *cVar, condition_variable *sigVar) : refreshInterval_{interval}, outString_{output}, outputCondition_{cVar}, signalCondition_{sigVar} {};
-			/** Refresh interval in seconds */
-			uint32_t refreshInterval_;
-			/** Pointer to the `string` that receives output */
-			string *outString_;
-			/** \brief Pointer to a condition variable to signal change in state
-			 *
-			 * The module is using this to communicate to the main thread.
-			 */
-			condition_variable *outputCondition_;
-			/** \brief Pointer to a condition variable to accept signal events
-			 *
-			 * The module is waiting for this if it relies on a real-time signal to refresh.
-			 */
-			condition_variable *signalCondition_;
+	public:
+		/** \brief Destructor */
+		virtual ~Module(){ outString_ = nullptr; outputCondition_ = nullptr; };
+		/** Run the module
+		 *
+		 * Runs the module, refreshing at the specified interval or after receiving a refresh signal.
+		 */
+		virtual void operator()() const = 0;
+	protected:
+		/** Default constructor */
+		Module() : refreshInterval_{0}, outString_{nullptr}, outputCondition_{nullptr}, signalCondition_{nullptr} {};
+		/** Constructor
+		 *
+		 * \param[in] interval refresh time interval in seconds
+		 * \param[in,out] output pointer to the output storing string
+		 * \param[in,out] cVar pointer to the condition variable for change signaling
+		 * \param[in,out] sigVar pointer to the condition variable to monitor real-time signals
+		 */
+		Module(const uint32_t &interval, string *output, condition_variable *cVar, condition_variable *sigVar) : refreshInterval_{interval}, outString_{output}, outputCondition_{cVar}, signalCondition_{sigVar} {};
+		/** Refresh interval in seconds */
+		uint32_t refreshInterval_;
+		/** Pointer to the `string` that receives output */
+		string *outString_;
+		/** \brief Pointer to a condition variable to signal change in state
+		 *
+		 * The module is using this to communicate to the main thread.
+		 */
+		condition_variable *outputCondition_;
+		/** \brief Pointer to a condition variable to accept signal events
+		 *
+		 * The module is waiting for this if it relies on a real-time signal to refresh.
+		 */
+		condition_variable *signalCondition_;
 	};
 	/** \brief Time and date derived class */
 	class ModuleDate final : public Module {
-		public:
-			/** Default constructor */
-			ModuleDate() : Module() {};
-			/** Constructor
-			 *
-			 * \param[in] interval refresh time interval in seconds
-			 * \param[in,out] output pointer to the output storing string
-			 * \param[in,out] cVar pointer to the condition variable for change signaling
-			 * \param[in,out] sigVar pointer to the condition variable to monitor real-time signals
-			 */
-			ModuleDate(const uint32_t &interval, const string &dateFormat, string *output, condition_variable *cVar, condition_variable *sigVar) : Module(interval, output, cVar, sigVar), dateFormat_{dateFormat} {};
+	public:
+		/** Default constructor */
+		ModuleDate() : Module() {};
+		/** Constructor
+		 *
+		 * \param[in] interval refresh time interval in seconds
+		 * \param[in,out] output pointer to the output storing string
+		 * \param[in,out] cVar pointer to the condition variable for change signaling
+		 * \param[in,out] sigVar pointer to the condition variable to monitor real-time signals
+		 */
+		ModuleDate(const uint32_t &interval, const string &dateFormat, string *output, condition_variable *cVar, condition_variable *sigVar) : Module(interval, output, cVar, sigVar), dateFormat_{dateFormat} {};
 
-			/** Destructor */
-			~ModuleDate() {};
+		/** \brief Destructor */
+		~ModuleDate() {};
 
-			/** Run the module
-			 *
-			 * Runs the module, refreshing at the specified interval or after receiving a refresh signal.
-			 */
-			void operator()() const override;
-
-		protected:
-			/** \brief Time format string
-			 *
-			 * Date display format, same as for the Unix `date` command.
-			 */
-			string dateFormat_;
+		/** Run the module
+		 *
+		 * Runs the module, refreshing at the specified interval or after receiving a refresh signal.
+		 */
+		void operator()() const override;
+	protected:
+		/** \brief Time format string
+		 *
+		 * Date display format, same as for the Unix `date` command.
+		 */
+		string dateFormat_;
 	};
 	/** \brief Battery state derived class
 	 *
@@ -116,6 +115,23 @@ namespace DWMBspace {
 	 */
 	class ModuleBattery final : public Module {
 	public:
+		/** \brief Default constructor */
+		ModuleBattery() : Module() {};
+		/** Constructor
+		 *
+		 * \param[in] interval refresh time interval in seconds
+		 * \param[in,out] output pointer to the output storing string
+		 * \param[in,out] cVar pointer to the condition variable for change signaling
+		 * \param[in,out] sigVar pointer to the condition variable to monitor real-time signals
+		 */
+		ModuleBattery(const uint32_t &interval, string *output, condition_variable *cVar, condition_variable *sigVar) : Module(interval, output, cVar, sigVar) {};
+		/** \brief Destructor */
+		~ModuleBattery() {};
+		/** Run the module
+		 *
+		 * Runs the module, refreshing at the specified interval or after receiving a refresh signal.
+		 */
+		void operator()() const override;
 	protected:
 
 	};
