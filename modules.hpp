@@ -80,6 +80,7 @@ namespace DWMBspace {
 		 */
 		condition_variable *signalCondition_;
 	};
+
 	/** \brief Time and date derived class */
 	class ModuleDate final : public Module {
 	public:
@@ -108,7 +109,10 @@ namespace DWMBspace {
 		 * Date display format, same as for the Unix `date` command.
 		 */
 		string dateFormat_;
+		/** \brief Get date and time */
+		void getDateTime_() const;
 	};
+
 	/** \brief Battery state derived class
 	 *
 	 * Displays the battery state.

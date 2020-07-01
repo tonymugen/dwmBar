@@ -59,31 +59,30 @@ using namespace DWMBspace;
 void ModuleDate::operator()() const {
 	if (refreshInterval_) { // if not zero, do a time-lapse loop
 		while (true) {
-			time_t t  = time(nullptr);
-			stringstream outTime;
-			outTime << put_time( localtime(&t), dateFormat_.c_str() );
-			mutex mtx;
-			unique_lock<mutex> lk(mtx);
-			*outString_ = outTime.str();
-			outputCondition_->notify_one();
-			lk.unlock();
-			outTime.clear();
+			getDateTime_();
 			sleep_for( seconds(refreshInterval_) );
 		}
 	} else { // wait for a real-time signal
+		getDateTime_();
 		mutex mtx;
 		while (true) {
 			unique_lock<mutex> lk(mtx);
 			signalCondition_->wait(lk);
-			time_t t  = time(nullptr);
-			stringstream outTime;
-			outTime << put_time( localtime(&t), dateFormat_.c_str() );
-			*outString_ = outTime.str();
-			outTime.clear();
-			outputCondition_->notify_one();
+			getDateTime_();
 			lk.unlock();
 		}
 	}
+}
+
+void ModuleDate::getDateTime_() const {
+	time_t t = time(nullptr);
+	stringstream outTime;
+	outTime << put_time( localtime(&t), dateFormat_.c_str() );
+	mutex mtx;
+	unique_lock<mutex> lk(mtx);
+	*outString_ = outTime.str();
+	outputCondition_->notify_one();
+	lk.unlock();
 }
 
 void ModuleBattery::operator()() const {
@@ -93,6 +92,7 @@ void ModuleBattery::operator()() const {
 			sleep_for( seconds(refreshInterval_) );
 		}
 	} else {
+		formatStatus_();
 		mutex mtxT;
 		while (true) {
 			unique_lock<mutex> lkT(mtxT);
