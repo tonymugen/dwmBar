@@ -29,6 +29,7 @@
 #ifndef modules_hpp
 #define modules_hpp
 
+#include <bits/stdint-intn.h>
 #include <bits/stdint-uintn.h>
 #include <string>
 #include <mutex>
@@ -53,7 +54,7 @@ namespace DWMBspace {
 		 *
 		 * Runs the module, refreshing at the specified interval or after receiving a refresh signal.
 		 */
-		virtual void operator()() const = 0;
+		void operator()() const;
 	protected:
 		/** Default constructor */
 		Module() : refreshInterval_{0}, outString_{nullptr}, outputCondition_{nullptr}, signalCondition_{nullptr} {};
@@ -79,9 +80,14 @@ namespace DWMBspace {
 		 * The module is waiting for this if it relies on a real-time signal to refresh.
 		 */
 		condition_variable *signalCondition_;
+		/** \brief Run the module once
+		 *
+		 * Retrieves the data specific to the module and formats the output.
+		 */
+		virtual void runModule_() const = 0;
 	};
 
-	/** \brief Time and date derived class */
+	/** \brief Time and date */
 	class ModuleDate final : public Module {
 	public:
 		/** Default constructor */
@@ -98,22 +104,20 @@ namespace DWMBspace {
 		/** \brief Destructor */
 		~ModuleDate() {};
 
-		/** Run the module
-		 *
-		 * Runs the module, refreshing at the specified interval or after receiving a refresh signal.
-		 */
-		void operator()() const override;
 	protected:
 		/** \brief Time format string
 		 *
 		 * Date display format, same as for the Unix `date` command.
 		 */
 		string dateFormat_;
-		/** \brief Get date and time */
-		void getDateTime_() const;
+		/** \brief Run the module once
+		 *
+		 * Retrieves the data specific to the module and formats the output.
+		 */
+		void runModule_() const override;
 	};
 
-	/** \brief Battery state derived class
+	/** \brief Battery state
 	 *
 	 * Displays the battery state.
 	 */
@@ -131,14 +135,66 @@ namespace DWMBspace {
 		ModuleBattery(const uint32_t &interval, string *output, condition_variable *cVar, condition_variable *sigVar) : Module(interval, output, cVar, sigVar) {};
 		/** \brief Destructor */
 		~ModuleBattery() {};
-		/** Run the module
-		 *
-		 * Runs the module, refreshing at the specified interval or after receiving a refresh signal.
-		 */
-		void operator()() const override;
 	protected:
-		/** \brief Get battery status and format output */
-		void formatStatus_() const;
+		/** \brief Run the module once
+		 *
+		 * Retrieves the data specific to the module and formats the output.
+		 */
+		void runModule_() const override;
+	};
+
+	/** \brief CPU status
+	 *
+	 * Displays CPU temperature and load.
+	 *
+	 */
+	class ModuleCPU final : public Module {
+	public:
+		/** \brief Default constructor */
+		ModuleCPU() : Module() {};
+		/** Constructor
+		 *
+		 * \param[in] interval refresh time interval in seconds
+		 * \param[in,out] output pointer to the output storing string
+		 * \param[in,out] cVar pointer to the condition variable for change signaling
+		 * \param[in,out] sigVar pointer to the condition variable to monitor real-time signals
+		 */
+		ModuleCPU(const uint32_t &interval, string *output, condition_variable *cVar, condition_variable *sigVar) : Module(interval, output, cVar, sigVar), previousTotalLoad_{0.0}, previousIdleLoad_{0.0} {};
+		/** \brief Destructor */
+		~ModuleCPU() {};
+	protected:
+		/** \brief Previous total CPU time */
+		mutable float previousTotalLoad_;
+		/** \brief Previous idle CPU time */
+		mutable float previousIdleLoad_;
+		/** \brief Run the module once
+		 *
+		 * Retrieves the data specific to the module and formats the output.
+		 */
+		void runModule_() const override;
+	};
+	/** \brief Free memory
+	 *
+	 * Displays the amount of free RAM.
+	 */
+	class ModuleRAM final : public Module {
+	public:
+		/** \brief Default constructor */
+		ModuleRAM() : Module() {};
+		/** Constructor
+		 *
+		 * \param[in] interval refresh time interval in seconds
+		 * \param[in,out] output pointer to the output storing string
+		 * \param[in,out] cVar pointer to the condition variable for change signaling
+		 * \param[in,out] sigVar pointer to the condition variable to monitor real-time signals
+		 */
+		ModuleRAM(const uint32_t &interval, string *output, condition_variable *cVar, condition_variable *sigVar) : Module(interval, output, cVar, sigVar) {};
+	protected:
+		/** \brief Run the module once
+		 *
+		 * Retrieves the data specific to the module and formats the output.
+		 */
+		void runModule_() const override;
 	};
 }
 

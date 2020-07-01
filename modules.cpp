@@ -28,7 +28,7 @@
  */
 #include <cstddef>
 #include <cstdio>
-#include <functional>
+#include <ios>
 #include <string>
 #include <sstream>
 #include <fstream>
@@ -39,13 +39,19 @@
 #include <condition_variable>
 #include <chrono>
 
+#include <iostream>
+
 #include "modules.hpp"
 
 using std::string;
-using std::stod;
+using std::stof;
+using std::stoi;
+using std::to_string;
 using std::stringstream;
 using std::fstream;
 using std::ios;
+using std::setprecision;
+using std::fixed;
 using std::time;
 using std::put_time;
 using std::localtime;
@@ -56,25 +62,25 @@ using std::chrono::seconds;
 
 using namespace DWMBspace;
 
-void ModuleDate::operator()() const {
+void Module::operator()() const {
 	if (refreshInterval_) { // if not zero, do a time-lapse loop
 		while (true) {
-			getDateTime_();
+			runModule_();
 			sleep_for( seconds(refreshInterval_) );
 		}
 	} else { // wait for a real-time signal
-		getDateTime_();
+		runModule_();
 		mutex mtx;
 		while (true) {
 			unique_lock<mutex> lk(mtx);
 			signalCondition_->wait(lk);
-			getDateTime_();
+			runModule_();
 			lk.unlock();
 		}
 	}
 }
 
-void ModuleDate::getDateTime_() const {
+void ModuleDate::runModule_() const {
 	time_t t = time(nullptr);
 	stringstream outTime;
 	outTime << put_time( localtime(&t), dateFormat_.c_str() );
@@ -85,42 +91,25 @@ void ModuleDate::getDateTime_() const {
 	lk.unlock();
 }
 
-void ModuleBattery::operator()() const {
-	if (refreshInterval_) { // if not zero, do a time-lapse loop
-		while (true) {
-			formatStatus_();
-			sleep_for( seconds(refreshInterval_) );
-		}
-	} else {
-		formatStatus_();
-		mutex mtxT;
-		while (true) {
-			unique_lock<mutex> lkT(mtxT);
-			signalCondition_->wait(lkT);
-			formatStatus_();
-			lkT.unlock();
-		}
-	}
-}
-
-void ModuleBattery::formatStatus_() const {
+void ModuleBattery::runModule_() const {
+	string batStatus;
 	fstream statusStream;
 	statusStream.open("/sys/class/power_supply/BAT0/status", ios::in);
-	if ( !statusStream.is_open() ) { // fail silently
-		return;
+	if ( statusStream.is_open() ) { // fail silently
+		getline(statusStream, batStatus);
 	}
-	string batStatus;
-	getline(statusStream, batStatus);
 	statusStream.close();
+	string batCapacityStr;
 	fstream capacityStream;
 	capacityStream.open("/sys/class/power_supply/BAT0/capacity", ios::in);
-	if ( !capacityStream.is_open() ) { // fail silently
-		return;
+	if ( capacityStream.is_open() ) { // fail silently
+		getline(capacityStream, batCapacityStr);
 	}
-	string batCapacityStr;
-	getline(capacityStream, batCapacityStr);
 	capacityStream.close();
-	double batCapacity = stod(batCapacityStr);
+	float batCapacity = 0.0;
+	if ( batCapacityStr.size() ) {
+		batCapacity = stof(batCapacityStr);
+	}
 	mutex mtx;
 	unique_lock<mutex> lk(mtx);
 	if (batStatus == "Charging") {
@@ -177,3 +166,86 @@ void ModuleBattery::formatStatus_() const {
 	lk.unlock();
 }
 
+void ModuleCPU::runModule_() const{
+	string tempStatus;
+	fstream tempStream;
+	tempStream.open("/sys/class/thermal/thermal_zone0/temp", ios::in);
+	if ( tempStream.is_open() ) {        // fail silently
+		getline(tempStream, tempStatus);
+	}
+	tempStream.close();
+	int32_t cpuTemp = 0;
+	if ( tempStatus.size() ) {
+		cpuTemp = stoi(tempStatus)/1000;
+	}
+	string loadLine;
+	fstream loadFileStream;
+	// the CPU usage data in this file are cumulative, so I must keep the values from the previous iteration (previous*_ private members)
+	// I then subtract these previous values to get the data for the measurement interval
+	loadFileStream.open("/proc/stat", ios::in);
+	if ( loadFileStream.is_open() ) {    // fail silently
+		getline(loadFileStream, loadLine);
+	}
+	loadFileStream.close();
+	float curTotalLoad = 0.0;
+	float curIdleLoad  = 0.0;
+	float percentLoad  = 0.0;
+	if ( loadLine.size() ) {
+		string field;
+		stringstream lineStream(loadLine);
+		lineStream >> field; // first filed is the line name
+		uint16_t fInd = 1;
+		while (lineStream >> field) {
+			if ( (fInd == 4) || (fInd == 5) ) {
+				curIdleLoad  += stod(field);
+				curTotalLoad += stod(field);
+			} else {
+				curTotalLoad += stod(field);
+			}
+			fInd++;
+		}
+		percentLoad        = ( 1.0 - (curIdleLoad - previousIdleLoad_)/(curTotalLoad - previousTotalLoad_) )*100;
+		previousIdleLoad_  = curIdleLoad;
+		previousTotalLoad_ = curTotalLoad;
+	}
+	string thermGlyph;
+	if (cpuTemp < 35) {
+		thermGlyph = "\ue20c";
+	} else if (cpuTemp < 80) {
+		thermGlyph = "\ue20a";
+	} else {
+		thermGlyph = "\ue20b";
+	}
+	stringstream pctStr;
+	pctStr << fixed << setprecision(1) << percentLoad;
+	const string loadOut = "\ufb19 " + pctStr.str() + "% " + thermGlyph + " " + to_string(cpuTemp) + "°C";
+	mutex mtx;
+	unique_lock<mutex> lk(mtx);
+	*outString_ = loadOut;
+	outputCondition_->notify_one();
+	lk.unlock();
+}
+
+void ModuleRAM::runModule_() const {
+	string memLine;
+	fstream memInfoStream;
+	memInfoStream.open("/proc/meminfo", ios::in);
+	while ( getline(memInfoStream, memLine) ){
+		if (memLine.compare(0, 8, "MemFree:") == 0) {
+			break;
+		}
+	}
+	memInfoStream.close();
+	stringstream memLineStream(memLine);
+	string freeMemStr;
+	memLineStream >> freeMemStr;
+	memLineStream >> freeMemStr;
+	float memGi = stof(freeMemStr)/1048576.0; // the value in the file is in kb
+	stringstream outMemStr;
+	outMemStr << fixed << setprecision(1) << memGi;
+	mutex mtx;
+	unique_lock<mutex> lk(mtx);
+	*outString_ = "\uf85a " + outMemStr.str() + "Gi";
+	outputCondition_->notify_one();
+	lk.unlock();
+}

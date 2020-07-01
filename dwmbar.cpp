@@ -109,7 +109,7 @@ int main(){
 	}
 	//const string dateFormat("%a %b %e %R %Z");
 	const string dateFormat("%a %b %e %H:%M %Z");
-	vector<string> moduleOutputs(2);
+	vector<string> moduleOutputs(4);
 	const string delim(" | ");
 	string barText;
 	mutex mtx;
@@ -117,6 +117,8 @@ int main(){
 	vector<thread> moduleThreads;
 	moduleThreads.push_back(thread{ModuleDate(60, dateFormat, &moduleOutputs[0], &commonCond, &signalCondition[1])});
 	moduleThreads.push_back(thread{ModuleBattery(5, &moduleOutputs[1], &commonCond, &signalCondition[2])});
+	moduleThreads.push_back(thread{ModuleCPU(2, &moduleOutputs[2], &commonCond, &signalCondition[3])});
+	moduleThreads.push_back(thread{ModuleRAM(2, &moduleOutputs[3], &commonCond, &signalCondition[4])});
 	while (true) {
 		unique_lock<mutex> lk(mtx);
 		commonCond.wait(lk);
