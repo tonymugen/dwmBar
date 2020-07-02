@@ -29,6 +29,7 @@
 #ifndef modules_hpp
 #define modules_hpp
 
+#include <cstddef>
 #include <vector>
 #include <string>
 #include <mutex>
@@ -223,6 +224,37 @@ namespace DWMBspace {
 		/** \brief Run the module once
 		 *
 		 * Retrieves the data specific to the module and formats the output.
+		 */
+		void runModule_() const override;
+	};
+	/** \brief External scripts
+	 *
+	 * Runs an external script or shell command and displays the output.
+	 * No formatting of the external output is performed, but it is truncated to 500 characters.
+	 */
+	class ModuleExtern final : public Module {
+	public:
+		/** \brief Default constructor */
+		ModuleExtern() : Module() {};
+		/** Constructor
+		 *
+		 * \param[in] interval refresh time interval in seconds
+		 * \param[in] command external command
+		 * \param[in,out] output pointer to the output storing string
+		 * \param[in,out] cVar pointer to the condition variable for change signaling
+		 * \param[in,out] sigVar pointer to the condition variable to monitor real-time signals
+		 */
+		ModuleExtern(const uint32_t &interval, const string &command, string *output, condition_variable *cVar, condition_variable *sigVar) : Module(interval, output, cVar, sigVar), extCommand_{command} {};
+		/** \brief Destructor */
+		~ModuleExtern() {};
+	protected:
+		/** \brief Output length limit */
+		static const size_t lengthLimit_;
+		/** \brief External command string */
+		const string extCommand_;
+		/** \brief Run the module once
+		 *
+		 * Runs the external shell command or script and returns the output, truncating to 500.
 		 */
 		void runModule_() const override;
 	};

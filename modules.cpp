@@ -274,3 +274,29 @@ void ModuleDisk::runModule_() const {
 	}
 }
 
+// static member
+const size_t ModuleExtern::lengthLimit_ = 500;
+
+void ModuleExtern::runModule_() const {
+	char buffer[100];
+	string output;
+	FILE *pipe = popen(extCommand_.c_str(), "r");
+	if (!pipe) { // fail silently
+		return;
+	}
+	while ( !feof(pipe) ) {
+		if (fgets(buffer, 100, pipe) != NULL) {
+			output += buffer;
+		}
+		if (output.size() > lengthLimit_) {
+			output.erase( output.begin()+lengthLimit_, output.end() );
+			break;
+		}
+	}
+	pclose(pipe);
+	mutex mtx;
+	unique_lock<mutex> lk(mtx);
+	*outString_ = output;
+	outputCondition_->notify_one();
+	lk.unlock();
+}

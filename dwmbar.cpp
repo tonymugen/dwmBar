@@ -27,6 +27,7 @@
  *
  */
 #include <X11/Xlib.h>
+#include <bits/stdint-intn.h>
 #include <csignal>
 #include <cstddef>
 #include <iostream>
@@ -38,8 +39,11 @@
 #include <chrono>
 
 #include "modules.hpp"
+// modify this file to configure what modules go where
+#include "config.hpp"
 
 using std::string;
+using std::stoi;
 using std::vector;
 using std::thread;
 using std::this_thread::sleep_for;
@@ -47,6 +51,7 @@ using std::mutex;
 using std::unique_lock;
 using std::condition_variable;
 using std::chrono::seconds;
+using std::cerr;
 
 using namespace DWMBspace;
 
@@ -107,26 +112,119 @@ int main(){
 	for (int sigID = SIGRTMIN; sigID <= SIGRTMAX; sigID++) {
 		signal(sigID, processSignal);
 	}
-	//const string dateFormat("%a %b %e %R %Z");
-	const string dateFormat("%a %b %e %H:%M %Z");
-	vector<string> moduleOutputs(5);
-	const string delim(" | ");
-	vector<string> fsNames{"/home", "/home/tonyg/extra"};
-	string barText;
 	mutex mtx;
 	condition_variable commonCond; // this triggers printing to the bar from individual modules
+	vector<string> topModuleOutputs( topModuleList.size() );
 	vector<thread> moduleThreads;
-	moduleThreads.push_back(thread{ModuleDate(60, dateFormat, &moduleOutputs[0], &commonCond, &signalCondition[1])});
-	moduleThreads.push_back(thread{ModuleBattery(5, &moduleOutputs[1], &commonCond, &signalCondition[2])});
-	moduleThreads.push_back(thread{ModuleCPU(2, &moduleOutputs[2], &commonCond, &signalCondition[3])});
-	moduleThreads.push_back(thread{ModuleRAM(2, &moduleOutputs[3], &commonCond, &signalCondition[4])});
-	moduleThreads.push_back(thread{ModuleDisk(30, fsNames, &moduleOutputs[4], &commonCond, &signalCondition[5])});
+	size_t moduleID = 0;
+	for (auto &tb : topModuleList){
+		if (tb.size() != 4) {
+			cerr << "ERROR: top bar module description vector must be have exactly four elements, yours has " << tb.size() << " (module " << tb[0] << ")\n";
+			exit(1);
+		}
+		if (tb[1] == "external") {
+			int32_t interval = stoi(tb[2]);
+			if (interval < 0) {
+				cerr << "ERROR: refresh interval cannot be negative, yours is " << interval << " (module " << tb[0] << ")\n";
+				exit(2);
+			}
+			int32_t rtSig = stoi(tb[3]);
+			if (rtSig < 0) {
+				cerr << "ERROR: real-time signal cannot be negative, yours is " << rtSig << " (module " << tb[0] << ")\n";
+				exit(3);
+			}
+			moduleThreads.push_back(thread{ModuleExtern(interval, tb[0], &topModuleOutputs[moduleID], &commonCond, &signalCondition[rtSig])});
+		} else {
+			int32_t interval = stoi(tb[2]);
+			if (interval < 0) {
+				cerr << "ERROR: refresh interval cannot be negative, yours is " << interval << " (module " << tb[0] << ")\n";
+				exit(2);
+			}
+			int32_t rtSig = stoi(tb[3]);
+			if (rtSig < 0) {
+				cerr << "ERROR: real-time signal cannot be negative, yours is " << rtSig << " (module " << tb[0] << ")\n";
+				exit(3);
+			}
+			if (tb[0] == "ModuleDate") {
+				moduleThreads.push_back(thread{ModuleDate(interval, dateFormat, &topModuleOutputs[moduleID], &commonCond, &signalCondition[rtSig])});
+			} else if (tb[0] == "ModuleBattery") {
+				moduleThreads.push_back(thread{ModuleBattery(interval, &topModuleOutputs[moduleID], &commonCond, &signalCondition[rtSig])});
+			} else if (tb[0] == "ModuleCPU") {
+				moduleThreads.push_back(thread{ModuleCPU(interval, &topModuleOutputs[moduleID], &commonCond, &signalCondition[rtSig])});
+			} else if (tb[0] == "ModuleRAM") {
+				moduleThreads.push_back(thread{ModuleRAM(interval, &topModuleOutputs[moduleID], &commonCond, &signalCondition[rtSig])});
+			} else if (tb[0] == "ModuleDisk") {
+				moduleThreads.push_back(thread{ModuleDisk(interval, fsNames, &topModuleOutputs[moduleID], &commonCond, &signalCondition[rtSig])});
+			} else {
+				cerr << "ERROR: unknown internal module " << tb[0] << "\n";
+				exit(4);
+			}
+		}
+		moduleID++;
+	}
+	vector<string> bottomModuleOutputs;
+	if (twoBars) {
+		bottomModuleOutputs.resize( bottomModuleList.size() );
+		moduleID = 0;
+		for (auto &bb : bottomModuleList){
+			if (bb.size() != 4) {
+				cerr << "ERROR: top bar module description vector must be have exactly four elements, yours has " << bb.size() << " (module " << bb[0] << ")\n";
+				exit(1);
+			}
+			if (bb[1] == "external") {
+				int32_t interval = stoi(bb[2]);
+				if (interval < 0) {
+					cerr << "ERROR: refresh interval cannot be negative, yours is " << interval << " (module " << bb[0] << ")\n";
+					exit(2);
+				}
+				int32_t rtSig = stoi(bb[3]);
+				if (rtSig < 0) {
+					cerr << "ERROR: real-time signal cannot be negative, yours is " << rtSig << " (module " << bb[0] << ")\n";
+					exit(3);
+				}
+				moduleThreads.push_back(thread{ModuleExtern(interval, bb[0], &bottomModuleOutputs[moduleID], &commonCond, &signalCondition[rtSig])});
+			} else {
+				int32_t interval = stoi(bb[2]);
+				if (interval < 0) {
+					cerr << "ERROR: refresh interval cannot be negative, yours is " << interval << " (module " << bb[0] << ")\n";
+					exit(2);
+				}
+				int32_t rtSig = stoi(bb[3]);
+				if (rtSig < 0) {
+					cerr << "ERROR: real-time signal cannot be negative, yours is " << rtSig << " (module " << bb[0] << ")\n";
+					exit(3);
+				}
+				if (bb[0] == "ModuleDate") {
+					moduleThreads.push_back(thread{ModuleDate(interval, dateFormat, &bottomModuleOutputs[moduleID], &commonCond, &signalCondition[rtSig])});
+				} else if (bb[0] == "ModuleBattery") {
+					moduleThreads.push_back(thread{ModuleBattery(interval, &bottomModuleOutputs[moduleID], &commonCond, &signalCondition[rtSig])});
+				} else if (bb[0] == "ModuleCPU") {
+					moduleThreads.push_back(thread{ModuleCPU(interval, &bottomModuleOutputs[moduleID], &commonCond, &signalCondition[rtSig])});
+				} else if (bb[0] == "ModuleRAM") {
+					moduleThreads.push_back(thread{ModuleRAM(interval, &bottomModuleOutputs[moduleID], &commonCond, &signalCondition[rtSig])});
+				} else if (bb[0] == "ModuleDisk") {
+					moduleThreads.push_back(thread{ModuleDisk(interval, fsNames, &bottomModuleOutputs[moduleID], &commonCond, &signalCondition[rtSig])});
+				} else {
+					cerr << "ERROR: unknown internal module " << bb[0] << "\n";
+					exit(4);
+				}
+			}
+			moduleID++;
+	}
+	}
+	string barTextBottom;
+	string barText;
 	while (true) {
 		unique_lock<mutex> lk(mtx);
 		commonCond.wait(lk);
-		makeBarOutput(moduleOutputs, delim, barText);
+		makeBarOutput(topModuleOutputs, topDelimiter, barText);
+		if (twoBars) {
+			makeBarOutput(bottomModuleOutputs, bottomDelimiter, barTextBottom);
+			// I personally like a little adding around the top bar. Change to suit your taste.
+			barText = " " + barText + " " + botTopDelimiter + barTextBottom;
+		}
 		lk.unlock();
-		std::cout << barText << " \n";
+		printRoot(barText);
 	}
 	for (auto &t : moduleThreads){
 		if ( t.joinable() ) {
