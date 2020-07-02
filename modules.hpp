@@ -29,12 +29,12 @@
 #ifndef modules_hpp
 #define modules_hpp
 
-#include <bits/stdint-intn.h>
-#include <bits/stdint-uintn.h>
+#include <vector>
 #include <string>
 #include <mutex>
 #include <condition_variable>
 
+using std::vector;
 using std::string;
 using std::condition_variable;
 using std::mutex;
@@ -189,7 +189,37 @@ namespace DWMBspace {
 		 * \param[in,out] sigVar pointer to the condition variable to monitor real-time signals
 		 */
 		ModuleRAM(const uint32_t &interval, string *output, condition_variable *cVar, condition_variable *sigVar) : Module(interval, output, cVar, sigVar) {};
+		/** \brief Destructor */
+		~ModuleRAM() {};
 	protected:
+		/** \brief Run the module once
+		 *
+		 * Retrieves the data specific to the module and formats the output.
+		 */
+		void runModule_() const override;
+	};
+	/** \brief Disk free space
+	 *
+	 * Lists free space in a list of file systems in Gb.
+	 */
+	class ModuleDisk final : public Module {
+	public:
+		/** \brief Default constructor */
+		ModuleDisk() : Module() {};
+		/** Constructor
+		 *
+		 * \param[in] interval refresh time interval in seconds
+		 * \param[in] fsVector vector of file system names
+		 * \param[in,out] output pointer to the output storing string
+		 * \param[in,out] cVar pointer to the condition variable for change signaling
+		 * \param[in,out] sigVar pointer to the condition variable to monitor real-time signals
+		 */
+		ModuleDisk(const uint32_t &interval, const vector<string> &fsVector, string *output, condition_variable *cVar, condition_variable *sigVar) : Module(interval, output, cVar, sigVar), fsNames_{fsVector} {};
+		/** \brief Destructor */
+		~ModuleDisk() {};
+	protected:
+		/** \brief File system names */
+		vector<string> fsNames_;
 		/** \brief Run the module once
 		 *
 		 * Retrieves the data specific to the module and formats the output.

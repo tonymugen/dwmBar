@@ -109,8 +109,9 @@ int main(){
 	}
 	//const string dateFormat("%a %b %e %R %Z");
 	const string dateFormat("%a %b %e %H:%M %Z");
-	vector<string> moduleOutputs(4);
+	vector<string> moduleOutputs(5);
 	const string delim(" | ");
+	vector<string> fsNames{"/home", "/home/tonyg/extra"};
 	string barText;
 	mutex mtx;
 	condition_variable commonCond; // this triggers printing to the bar from individual modules
@@ -119,6 +120,7 @@ int main(){
 	moduleThreads.push_back(thread{ModuleBattery(5, &moduleOutputs[1], &commonCond, &signalCondition[2])});
 	moduleThreads.push_back(thread{ModuleCPU(2, &moduleOutputs[2], &commonCond, &signalCondition[3])});
 	moduleThreads.push_back(thread{ModuleRAM(2, &moduleOutputs[3], &commonCond, &signalCondition[4])});
+	moduleThreads.push_back(thread{ModuleDisk(30, fsNames, &moduleOutputs[4], &commonCond, &signalCondition[5])});
 	while (true) {
 		unique_lock<mutex> lk(mtx);
 		commonCond.wait(lk);

@@ -28,6 +28,7 @@
  */
 #include <cstddef>
 #include <cstdio>
+#include <sys/statvfs.h>
 #include <ios>
 #include <string>
 #include <sstream>
@@ -38,8 +39,6 @@
 #include <mutex>
 #include <condition_variable>
 #include <chrono>
-
-#include <iostream>
 
 #include "modules.hpp"
 
@@ -249,3 +248,29 @@ void ModuleRAM::runModule_() const {
 	outputCondition_->notify_one();
 	lk.unlock();
 }
+
+void ModuleDisk::runModule_() const {
+	// start the output with the home icon for the home file system
+	// (assuming that it's in the first element of the file system vector)
+	string output;
+	uint16_t iconInd = 0;
+	for (auto &fs : fsNames_){
+		output += (iconInd == 0 ? "\uf015 " : "  \uf0a0 ");
+		iconInd++;
+		struct statvfs buf;
+		int test = statvfs(fs.c_str(), &buf);
+		float diskSpace = 0.0;
+		if (test == 0) {
+			diskSpace = static_cast<float>(buf.f_bavail * buf.f_bsize)/1073741824.0;
+		}
+		stringstream dsStream;
+		dsStream << fixed << setprecision(0) << diskSpace;
+		output += dsStream.str() + "Gi";
+		mutex mtx;
+		unique_lock<mutex> lk(mtx);
+		*outString_ = output;
+		outputCondition_->notify_one();
+		lk.unlock();
+	}
+}
+
