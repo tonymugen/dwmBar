@@ -25,3 +25,8 @@ This will put the `dwmbar` binary in `/usr/local/bin/` and assumes gcc is the co
 # Configure
 
 `dwmbar` is configured by editing the `config.hpp` file. Comments within the file explain what to do and the available options. If you want to customize further, full interface documentation is [here](https://tonymugen.github.io/dwmBar), or you can run `doxygen` in the source code directory.
+
+Here is a screenshot from my system:
+
+<center><img src=/dwmBar.png alt="Text" style="width: 600px;"></center>
+
