@@ -35,7 +35,8 @@ static const std::string botTopDelimiter(";");
  * - module name (one of the provided internal objects, the path to the relevant script, or a shell command)
  * - internal/external keyword
  * - refresh interval (in seconds; 0 means update only on receiving a real-time signal)
- * - `SIGRTMIN` signal ID, must be between 0 and 30. If the refresh interval is not zero, this value is ignored.
+ * - `SIGRTMIN` signal ID, must be between 0 and 30.
+ *   If the refresh interval is not zero, a real-time signal ca still be used to trigger the module before the interval expires.
  */
 static const std::vector< std::vector<std::string> > topModuleList = {
 	{"~/.scripts/checkMail",  "external", "5",   "8"},
@@ -53,10 +54,10 @@ static const std::vector< std::vector<std::string> > bottomModuleList = {
 	{"ModuleDate",          "internal", "60",  "1"},
 	{"ModuleBattery",       "internal", "5",   "2"},
 	{"ModuleCPU",           "internal", "2",   "3"},
-	{"~/.scripts/gpuStats", "external", "2",   "4"},
+	{"~/.scripts/gpuStats", "external", "10",   "4"},
 	{"ModuleRAM",           "internal", "2",   "5"},
 	{"ModuleDisk",          "internal", "10",  "6"},
-	{"~/.scripts/wanIP",    "external", "120", "7"},
+	{"~/.scripts/wanIP",    "external", "300", "7"},
 };
 
 /** \brief Date format for the internal date/time module */

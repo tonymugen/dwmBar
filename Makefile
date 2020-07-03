@@ -14,7 +14,7 @@ install : $(DBOUT)
 	-cp -v $(DBOUT) $(INSTALLDIR)/bin
 .PHONY : install
 
-$(DBOUT) : dwmbar.cpp $(DBOBJ)
+$(DBOUT) : dwmbar.cpp $(DBOBJ) config.hpp
 	$(CXX) dwmbar.cpp $(DBOBJ) -o $(DBOUT) $(CXXFLAGS)
 
 modules.o : modules.cpp modules.hpp

@@ -63,9 +63,11 @@ using namespace DWMBspace;
 
 void Module::operator()() const {
 	if (refreshInterval_) { // if not zero, do a time-lapse loop
+		mutex mtx;
 		while (true) {
 			runModule_();
-			sleep_for( seconds(refreshInterval_) );
+			unique_lock<mutex> lk(mtx);
+			signalCondition_->wait_for(lk, seconds(refreshInterval_));
 		}
 	} else { // wait for a real-time signal
 		runModule_();
@@ -85,7 +87,9 @@ void ModuleDate::runModule_() const {
 	outTime << put_time( localtime(&t), dateFormat_.c_str() );
 	mutex mtx;
 	unique_lock<mutex> lk(mtx);
-	*outString_ = outTime.str();
+	if ( outTime.str().size() ) {
+		*outString_ = outTime.str();
+	}
 	outputCondition_->notify_one();
 	lk.unlock();
 }
@@ -220,7 +224,9 @@ void ModuleCPU::runModule_() const{
 	const string loadOut = "\ufb19 " + pctStr.str() + "% " + thermGlyph + " " + to_string(cpuTemp) + "°C";
 	mutex mtx;
 	unique_lock<mutex> lk(mtx);
-	*outString_ = loadOut;
+	if ( loadOut.size() ) {
+		*outString_ = loadOut;
+	}
 	outputCondition_->notify_one();
 	lk.unlock();
 }
@@ -268,7 +274,9 @@ void ModuleDisk::runModule_() const {
 		output += dsStream.str() + "Gi";
 		mutex mtx;
 		unique_lock<mutex> lk(mtx);
-		*outString_ = output;
+		if ( output.size() ) {
+			*outString_ = output;
+		}
 		outputCondition_->notify_one();
 		lk.unlock();
 	}
@@ -296,7 +304,9 @@ void ModuleExtern::runModule_() const {
 	pclose(pipe);
 	mutex mtx;
 	unique_lock<mutex> lk(mtx);
-	*outString_ = output;
+	if ( output.size() ) {
+		*outString_ = output;
+	}
 	outputCondition_->notify_one();
 	lk.unlock();
 }
