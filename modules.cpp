@@ -87,9 +87,7 @@ void ModuleDate::runModule_() const {
 	outTime << put_time( localtime(&t), dateFormat_.c_str() );
 	mutex mtx;
 	unique_lock<mutex> lk(mtx);
-	if ( outTime.str().size() ) {
-		*outString_ = outTime.str();
-	}
+	*outString_ = outTime.str();
 	outputCondition_->notify_one();
 	lk.unlock();
 }
@@ -224,9 +222,7 @@ void ModuleCPU::runModule_() const{
 	const string loadOut = "\ufb19 " + pctStr.str() + "% " + thermGlyph + " " + to_string(cpuTemp) + "°C";
 	mutex mtx;
 	unique_lock<mutex> lk(mtx);
-	if ( loadOut.size() ) {
-		*outString_ = loadOut;
-	}
+	*outString_ = loadOut;
 	outputCondition_->notify_one();
 	lk.unlock();
 }
@@ -304,9 +300,7 @@ void ModuleExtern::runModule_() const {
 	pclose(pipe);
 	mutex mtx;
 	unique_lock<mutex> lk(mtx);
-	if ( output.size() ) {
-		*outString_ = output;
-	}
+	*outString_ = output;
 	outputCondition_->notify_one();
 	lk.unlock();
 }
