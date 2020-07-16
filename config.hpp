@@ -39,7 +39,7 @@ static const std::string botTopDelimiter(";");
  *   If the refresh interval is not zero, a real-time signal ca still be used to trigger the module before the interval expires.
  */
 static const std::vector< std::vector<std::string> > topModuleList = {
-	{"~/.scripts/checkMail",  "external", "5",   "8"},
+	{"~/.scripts/checkMail",  "external", "0",   "8"},
 	{"~/.scripts/pacupdate",  "external", "300", "9"},
 	{"~/.scripts/getVolume",  "external", "10",  "10"},
 	{"~/.scripts/wifiSignal", "external", "10",  "11"},
