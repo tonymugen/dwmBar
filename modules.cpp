@@ -232,7 +232,7 @@ void ModuleRAM::runModule_() const {
 	fstream memInfoStream;
 	memInfoStream.open("/proc/meminfo", ios::in);
 	while ( getline(memInfoStream, memLine) ){
-		if (memLine.compare(0, 8, "MemFree:") == 0) {
+		if (memLine.compare(0, 13, "MemAvailable:") == 0) {
 			break;
 		}
 	}
