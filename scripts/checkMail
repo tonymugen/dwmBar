@@ -1,0 +1,12 @@
+#!/usr/bin/bash
+
+#
+# Check for new e-mail messages. They are fetched in the background by imapSync
+#
+
+numMess=$( find $HOME/.mail -type d -name Inbox -exec ls {}/new ';' | wc -w )
+
+if [ $numMess != 0 ]; then
+	echo -en "$numMess \uf430"
+fi
+

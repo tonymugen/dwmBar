@@ -210,7 +210,7 @@ int main(){
 				}
 			}
 			moduleID++;
-	}
+		}
 	}
 	string barTextBottom;
 	string barText;

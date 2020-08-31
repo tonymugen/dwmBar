@@ -1,0 +1,12 @@
+#!/usr/bin/bash
+
+#
+# Gets the number of packages ready to be updated.
+# Requires that pacman -Sy is run. I use a systemd timer to run it, but you can also do a cron job.
+#
+numPacs=$( pacman -Qu | grep -v '\[ignored\]' | wc -l | sed 's/^0$//' )
+
+if [ $numPacs ]; then
+	echo -en "$numPacs \uf487"
+fi
+

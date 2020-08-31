@@ -268,14 +268,49 @@ void ModuleDisk::runModule_() const {
 		stringstream dsStream;
 		dsStream << fixed << setprecision(0) << diskSpace;
 		output += dsStream.str() + "Gi";
-		mutex mtx;
-		unique_lock<mutex> lk(mtx);
-		if ( output.size() ) {
-			*outString_ = output;
-		}
-		outputCondition_->notify_one();
-		lk.unlock();
 	}
+	// add RAID information if available
+	fstream raidStream;
+	raidStream.open("/proc/mdstat", ios::in);
+	string mdstatLine;
+	vector<string> mdstatDeviceLines;
+	if ( raidStream.good() ) {
+		while ( getline(raidStream, mdstatLine) ) {
+			if (mdstatLine.compare(0, 2, "md") == 0) { // found the array line
+				string curDevLine;
+				getline(raidStream, curDevLine);
+				mdstatDeviceLines.push_back(curDevLine); // in case there is more than one array on the system
+			}
+		}
+	}
+	if ( raidStream.is_open() ) {
+		raidStream.close();
+	}
+	vector<string> deviceStatus;
+	if ( mdstatDeviceLines.size() ) {
+		for (auto &mdl : mdstatDeviceLines){
+			string curStatus;
+			for (auto &mdc : mdl){
+				if (mdc == 'U') {
+					curStatus += "\uf431";
+				} else if (mdc == '_') {
+					curStatus += "\uf433";
+				}
+			}
+			deviceStatus.push_back(curStatus);
+		}
+		output += "  \uf98a";
+		for (auto &ds : deviceStatus){
+			output += " " + ds;
+		}
+	}
+	mutex mtx;
+	unique_lock<mutex> lk(mtx);
+	if ( output.size() ) {
+		*outString_ = output;
+	}
+	outputCondition_->notify_one();
+	lk.unlock();
 }
 
 // static member

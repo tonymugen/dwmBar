@@ -201,7 +201,7 @@ namespace DWMBspace {
 	};
 	/** \brief Disk free space
 	 *
-	 * Lists free space in a list of file systems in Gb.
+	 * Lists free space in a list of file systems in Gb and RAID status if available.
 	 */
 	class ModuleDisk final : public Module {
 	public:
