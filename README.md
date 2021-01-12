@@ -21,6 +21,7 @@ cd dwmBar
 make
 sudo make install
 ```
+
 This will put the `dwmbar` binary in `/usr/local/bin/` and assumes gcc is the compiler on the system. If you have llvm instead, use
 
 ```sh
@@ -37,5 +38,6 @@ The project depends on a C++ compiler that understands C++11. It also requires `
 
 Here is a screenshot from my system:
 
-<center><img src=/dwmBar.png alt="Text" style="width: 600px;"></center>
-
+<center>
+<img alt="screenshot" width="40%" src="./dwmBar.png">
+</center>
